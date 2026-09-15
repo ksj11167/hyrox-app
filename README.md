@@ -72,6 +72,7 @@ app/                        배포 대상 (빌드 불필요, 정적 파일)
 android/  ios/              Capacitor 네이티브 셸 (cap sync가 app/을 복사)
 capacitor.config.json
 tools/make-artifact.mjs     app/index.html → Claude 아티팩트용 파일
+docs/prd.md                 v1 범위 · 타겟 · 성공 지표 · 비범위
 docs/decisions.md           확정된 결정 · 가정 · 인터뷰 기록
 ```
 
