@@ -39,6 +39,9 @@
 | | 용도 | 라이선스 |
 |---|---|---|
 | [`ts-fsrs`](https://github.com/open-spaced-repetition/ts-fsrs) 5.4.2 | 간격반복 스케줄링. `app/vendor/`에 벤더링 | MIT |
+| [Capacitor](https://capacitorjs.com) 8.5.2 | 웹 앱을 iOS/Android 네이티브로 감싸기 | MIT |
+| [`@capgo/capacitor-share-target`](https://github.com/Cap-go/capacitor-share-target) 8.0.52 | 공유시트로 카톡 내보내기 파일 받기 | MIT |
+| [`@capgo/capacitor-speech-recognition`](https://github.com/Cap-go/capacitor-speech-recognition) 8.3.0 | 온디바이스 음성 인식 | MIT |
 | IBM Plex Sans KR / Mono, Newsreader | 타이포그래피 (Google Fonts) | OFL |
 
 스와이프 제스처와 서비스워커는 직접 썼다. 각각 100줄 남짓이라 의존성을 더할
@@ -58,7 +61,10 @@ app/                        배포 대상 (빌드 불필요, 정적 파일)
     swipe.js                카드 스택 스와이프 (포인터 · 키보드)
     srs.js                  FSRS 래퍼
     translate.js            번역 제공자 (Claude 아티팩트 | 본인 API 키)
+    platform.js             네이티브/웹 한 겹 (공유시트 · 음성 인식)
   vendor/ts-fsrs.mjs
+android/  ios/              Capacitor 네이티브 셸 (cap sync가 app/을 복사)
+capacitor.config.json
 tools/make-artifact.mjs     app/index.html → Claude 아티팩트용 파일
 docs/decisions.md           확정된 결정 · 가정 · 인터뷰 기록
 ```
@@ -81,7 +87,7 @@ npx http-server app -p 8787
 
 ## 배포
 
-두 곳에 나가고, 같은 코드를 쓴다.
+세 곳에 나가고, 전부 같은 `app/` 소스를 쓴다.
 
 **GitHub Pages** — `main`에 `app/**`가 바뀌면 자동 배포된다
 (`.github/workflows/pages.yml`). 레포 Settings → Pages → Source를
@@ -96,13 +102,40 @@ npx http-server app -p 8787
 node tools/make-artifact.mjs /tmp/artifact.html
 ```
 
+**App Store / Play Store** — Capacitor 셸. `app/`을 그대로 WebView에 담고
+네이티브 기능만 플러그인으로 연다. 번들러는 쓰지 않는다: 플러그인은
+`window.Capacitor.Plugins`로 런타임에 잡고, 없으면 웹 경로로 내려간다
+(`app/js/platform.js`).
+
+```bash
+npx cap sync            # app/ → android/, ios/
+npx cap run android     # Android SDK 필요
+```
+
+네이티브가 푸는 것:
+
+| | 웹에서 | 네이티브에서 |
+|---|---|---|
+| 카톡 공유시트 수신 | iOS 불가 | 양쪽 가능 |
+| 음성 인식 | Chrome은 구글 서버로 전송 | **기기 안에서 처리** (iOS 26+ SpeechTranscriber / Android on-device) |
+
+⚠️ **iOS 빌드에는 Mac이 필요하다** (Xcode는 macOS 전용). `.github/workflows/ios.yml`이
+macOS 러너에서 시뮬레이터 빌드를 돌린다 — 수동 실행(workflow_dispatch)이고,
+비공개 레포에서는 분당 과금된다. Android는 `.github/workflows/android.yml`이
+푸시마다 디버그 APK를 만든다.
+
+⚠️ **iOS 공유 확장(Share Extension)은 Xcode에서 타겟을 하나 추가해야 한다.**
+플러그인이 네이티브 코드는 제공하지만 타겟 생성 자체는 Xcode 작업이라 이 환경에서
+만들지 못했다. Android 쪽 인텐트 필터는 매니페스트에 넣어뒀다.
+
 ## 알려진 제약
 
 - **iOS 웹앱은 카톡 공유시트로 파일을 못 받는다** (Web Share Target 미지원).
   파일 앱에 저장한 뒤 앱에서 고르는 한 단계가 더 필요하다. Android는 직접 된다.
 - **카드는 브라우저별로 저장된다** (localStorage). 기기 간 동기화 없음.
-- **음성 인식은 브라우저 의존**이다. 미지원 시 정답 보기로 자동 전환된다.
-  Chrome은 오디오를 구글 서버로 보낸다.
+- **웹에서의 음성 인식은 브라우저 의존**이다. 미지원 시 정답 보기로 자동
+  전환된다. Chrome은 오디오를 구글 서버로 보낸다 — 네이티브 셸에서는 온디바이스로
+  처리되어 이 문제가 없다.
 - **API 키를 브라우저에 두는 방식**은 공용 기기에서 쓰면 안 된다. Anthropic이
   `anthropic-dangerous-direct-browser-access` 헤더로 허용하는 "본인 키" 패턴이다.
 - 카카오는 대화를 읽는 공식 API를 제공하지 않는다. 내보내기 파일이 유일한 경로다.

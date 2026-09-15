@@ -1,0 +1,38 @@
+name: Build Android app
+
+# The container this was scaffolded in has no Android SDK, so CI is the first
+# place the native build is actually exercised. Keep it on every push to the app
+# or the native project so a broken shell shows up immediately.
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['app/**', 'android/**', 'capacitor.config.json', 'package.json', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+      - run: npm test
+      - run: npx cap sync android
+
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: real-talk-english-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

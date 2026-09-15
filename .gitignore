@@ -1,2 +1,26 @@
 # oh-my-claudecode local session state (session ids, pids, cooldown timestamps)
 .omc/
+
+# dependencies
+node_modules/
+
+# Capacitor copies app/ into the native projects on `cap sync`; the copies are
+# build output, not source.
+android/app/src/main/assets/public/
+android/app/src/main/res/xml/config.xml
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/Podfile.lock
+
+# native build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+*.apk
+*.aab
+*.ipa

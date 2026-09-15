@@ -2,6 +2,7 @@ import { parseKakaoExport, buildCandidates, guessRoomType, groupByDay } from './
 import { newCardState, review, isDue, isLearned, dueLabel } from './srs.js';
 import { createSwipeDeck } from './swipe.js';
 import * as T from './translate.js';
+import { isNative, platform, onSharedChatExport, createRecogniser } from './platform.js';
 
 /* The sample ships with English written in, so the whole loop — including the
    swipe and the scheduler — works before any provider is configured. */
@@ -370,51 +371,37 @@ $('pick-day').addEventListener('click', () => { renderDays(); show('days'); });
 $('restart').addEventListener('click', () => { paste.value = ''; $('go-parse').disabled = true; show('import'); });
 
 /* ══════ speech ══════ */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (SR) {
-  recog = new SR();
-  recog.lang = 'en-US';
-  recog.interimResults = true;
-  recog.maxAlternatives = 1;
-  recog.continuous = false;
-  recog.onresult = (e) => {
-    let t = '';
-    for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
-    heardText = t.trim();
-    $('pr-hint').textContent = heardText || '…';
-  };
-  recog.onerror = (e) => {
+recog = createRecogniser({
+  onPartial: (t) => { heardText = t; $('pr-hint').textContent = t || '…'; },
+  onEnd: (t) => {
     listening = false;
     $('mic').classList.remove('live');
-    $('pr-hint').textContent = e.error === 'not-allowed'
+    heardText = t || heardText;
+    if (heardText) judge();
+  },
+  onError: (err) => {
+    listening = false;
+    $('mic').classList.remove('live');
+    $('pr-hint').textContent = err === 'not-allowed'
       ? '마이크 권한이 필요합니다. 카드를 눌러 정답을 봐도 됩니다.'
       : '잘 들리지 않았습니다. 다시 눌러보세요.';
-  };
-  recog.onend = () => {
-    listening = false;
-    $('mic').classList.remove('live');
-    if (heardText) judge();
-  };
-} else {
-  $('mic').disabled = true;
-}
-
-$('mic').addEventListener('click', () => {
-  if (!recog || !deck.current()) return;
-  if (listening) { stopListening(); return; }
-  heardText = '';
-  try {
-    recog.start();
-    listening = true;
-    $('mic').classList.add('live');
-    $('pr-hint').textContent = '듣고 있습니다… 다 말하면 다시 누르세요';
-  } catch {
-    $('pr-hint').textContent = '마이크를 시작하지 못했습니다.';
-  }
+  },
 });
 
-function stopListening() {
-  if (recog && listening) { try { recog.stop(); } catch { /* already stopped */ } }
+recog.available().then((ok) => { $('mic').disabled = !ok; });
+
+$('mic').addEventListener('click', async () => {
+  if ($('mic').disabled || !deck.current()) return;
+  if (listening) { await stopListening(); return; }
+  heardText = '';
+  listening = true;
+  $('mic').classList.add('live');
+  $('pr-hint').textContent = '듣고 있습니다… 다 말하면 다시 누르세요';
+  await recog.start();
+});
+
+async function stopListening() {
+  if (listening) await recog.stop();
   listening = false;
   $('mic').classList.remove('live');
 }
@@ -498,6 +485,17 @@ if (saved) {
 }
 
 T.detect();
+
+// On the native shell KakaoTalk can share an export straight into the app,
+// which is the whole reason the shell exists on iOS — Safari cannot register as
+// a share target at all.
+onSharedChatExport((text) => {
+  paste.value = text;
+  $('go-parse').disabled = false;
+  ingest(text, false);
+});
+
+if (isNative()) document.documentElement.dataset.platform = platform();
 
 // Only meaningful when served from its own origin; inside the artifact frame
 // there is no scope to register against.

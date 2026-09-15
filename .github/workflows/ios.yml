@@ -1,0 +1,30 @@
+name: Build iOS app
+
+# macOS runners are billed by the minute on private repositories, so this runs
+# only when asked for rather than on every push. It builds the simulator target,
+# which needs no signing certificate — enough to prove the shell compiles.
+on:
+  workflow_dispatch:
+
+jobs:
+  archive:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - run: npm ci
+      - run: npm test
+      - run: npx cap sync ios
+
+      - name: Build for simulator (no signing)
+        working-directory: ios/App
+        run: |
+          xcodebuild \
+            -scheme App \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build

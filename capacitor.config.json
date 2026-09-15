@@ -1,0 +1,18 @@
+{
+  "appId": "com.ksj11167.realtalkenglish",
+  "appName": "말한 대로 영어",
+  "webDir": "app",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "always"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#2952e3",
+      "showSpinner": false
+    }
+  }
+}
