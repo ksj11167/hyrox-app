@@ -9,10 +9,6 @@
 - **직무별 표현집** — 공통 / 개발 / 영업 / 기획·PM / 디자인. 바로 시작, 준비물 없음
 - **내 카톡 대화** — 어제 단톡방에 내가 친 말이 그대로 카드가 된다
 
-> ⚠️ 이 프로젝트는 `hyrox-app` 레포에 임시로 들어 있다. 원래 목적지는
-> `ksj11167/real-talk-english`이며, 레포 생성 권한이 없어 옮기지 못했다.
-> 아래 **레포 이전** 참조.
-
 ## 어떻게 동작하나
 
 ```
@@ -164,12 +160,3 @@ macOS 러너에서 시뮬레이터 빌드를 돌린다 — 수동 실행(workflo
 - **API 키를 브라우저에 두는 방식**은 공용 기기에서 쓰면 안 된다. Anthropic이
   `anthropic-dangerous-direct-browser-access` 헤더로 허용하는 "본인 키" 패턴이다.
 - 카카오는 대화를 읽는 공식 API를 제공하지 않는다. 내보내기 파일이 유일한 경로다.
-
-## 레포 이전
-
-`ksj11167/real-talk-english`를 만든 뒤:
-
-```bash
-git remote add rte https://github.com/ksj11167/real-talk-english.git
-git push rte claude/messenger-english-conversation-app-ombn7i:main
-```
