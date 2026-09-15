@@ -3,6 +3,7 @@ import { newCardState, review, isDue, isLearned, dueLabel } from './srs.js';
 import { createSwipeDeck } from './swipe.js';
 import * as T from './translate.js';
 import { isNative, platform, onSharedChatExport, createRecogniser } from './platform.js';
+import { JOB_DECKS } from './job-decks.js';
 
 /* The sample ships with English written in, so the whole loop — including the
    swipe and the scheduler — works before any provider is configured. */
@@ -151,15 +152,68 @@ $('go-days').addEventListener('click', () => {
   const roomType = guessRoomType(parsed);
   const groups = groupByDay(buildCandidates(parsed, state.me));
   const existing = new Map(state.days.map((d) => [d.date, d]));
-  state.days = groups.map((g) => {
+  // Job decks are not days of this chat export, so importing a conversation
+  // must not sweep them (and their review history) away.
+  const jobs = state.days.filter((d) => d.kind === 'job');
+  const chatDays = groups.map((g) => {
     const old = existing.get(g.date);
     if (old && old.built) return old;                 // keep translations already paid for
     return { date: g.date, roomType, built: false, cards: g.cards.map((c) => ({ ...c, srs: newCardState() })) };
   });
+  state.days = [...jobs, ...chatDays];
   save();
   renderDays();
   show('days');
 });
+
+/* ══════ job decks ══════ */
+/* A job deck is just a deck that arrived pre-translated, so it joins state.days
+   and reuses the whole practice, scheduling and progress machinery. */
+$('go-jobs').addEventListener('click', () => { renderJobs(); show('jobs'); });
+$('back-jobs').addEventListener('click', () => show('import'));
+
+function renderJobs() {
+  $('job-list').innerHTML = JOB_DECKS.map((d) => {
+    const mine = state.days.find((x) => x.jobId === d.id);
+    const st = !mine ? 'new' : dayStatus(mine);
+    const label = st === 'done' ? '완료' : st === 'ready' ? '이어서' : d.blurb;
+    return `<button class="day ${st}" data-job="${esc(d.id)}">
+      <i class="pip"></i>
+      <span class="when"><b>${esc(d.name)}</b><span>${esc(label)}</span></span>
+      <span class="n">${d.cards.length}장</span>
+    </button>`;
+  }).join('');
+  for (const b of $('job-list').querySelectorAll('.day')) {
+    b.addEventListener('click', () => openJobDeck(b.dataset.job));
+  }
+}
+
+function openJobDeck(jobId) {
+  const src = JOB_DECKS.find((d) => d.id === jobId);
+  if (!src) return;
+  let i = state.days.findIndex((d) => d.jobId === jobId);
+  if (i < 0) {
+    state.days.unshift({
+      kind: 'job',
+      jobId: src.id,
+      date: `직무 · ${src.name}`,
+      roomType: 'business',
+      built: true,                       // English ships with the deck
+      cards: src.cards.map((c, n) => ({
+        id: `${src.id}-${n}`,
+        ko: c.ko,
+        en: c.en,
+        situation: c.situation,
+        context: (c.context || []).map((x) => ({ ...x, mine: false })),
+        srs: newCardState(),
+      })),
+    });
+    i = 0;
+    save();
+  }
+  activeDay = i;
+  startSession();
+}
 
 /* ══════ day list ══════ */
 const dayStatus = (d) => !d.built ? 'new' : d.cards.every((c) => isLearned(c.srs)) ? 'done' : 'ready';
@@ -363,11 +417,16 @@ function finish() {
     : '왼쪽으로 넘긴 카드는 더 자주 돌아옵니다.';
 
   $('next-day').classList.toggle('hide', left < 0);
-  $('next-day').onclick = () => openDay(left);
+  if (left >= 0) {
+    const nxt = state.days[left];
+    $('next-day').textContent = nxt.kind === 'job' ? `${nxt.date} 이어서 하기` : '다음 날짜 이어서 하기';
+    $('next-day').onclick = () => openDay(left);
+  }
   show('done');
 }
 
 $('pick-day').addEventListener('click', () => { renderDays(); show('days'); });
+$('more-jobs').addEventListener('click', () => { renderJobs(); show('jobs'); });
 $('restart').addEventListener('click', () => { paste.value = ''; $('go-parse').disabled = true; show('import'); });
 
 /* ══════ speech ══════ */

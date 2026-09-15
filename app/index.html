@@ -7,10 +7,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="말한 대로 영어">
+<meta name="apple-mobile-web-app-title" content="K-직장인 영어">
 </head>
 <body>
-<title>말한 대로 영어</title>
+<title>K-직장인 영어</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
@@ -21,17 +21,18 @@
   <!-- ══════ IMPORT ══════ -->
   <section class="screen on" id="s-import">
     <div class="masthead">
-      <div class="wordmark"><i class="dot"></i><span>Real Talk English</span></div>
-      <h1>어제 나눈 대화,<br>오늘 영어로 말해보기</h1>
-      <p class="small">카톡 대화를 날짜별로 나눠 <b>하루치씩</b> 연습합니다. 아는 건 오른쪽, 막히면 왼쪽으로 넘기세요.</p>
+      <div class="wordmark"><i class="dot"></i><span>K-직장인 영어</span></div>
+      <h1>회사에서 맨날 쓰는 그 말,<br>영어로는 뭐라고 하지?</h1>
+      <p class="small">“확인하고 말씀드릴게요”, “조금 늦어질 것 같아요” — 교재에 안 나오는데 매일 쓰는 말들. <b>하루 5분</b>, 아는 건 오른쪽 모르는 건 왼쪽으로 넘기면 됩니다.</p>
     </div>
 
     <div class="stack">
       <button class="btn wide" id="go-resume">이어서 하기</button>
-      <button class="btn wide" id="go-sample">샘플 대화로 해보기</button>
+      <button class="btn wide" id="go-jobs">내 직무 표현으로 시작하기</button>
 
       <div class="panel">
-        <h2>내 카톡 대화 넣기</h2>
+        <h2>내 카톡으로 만들기</h2>
+        <p class="small">진짜 내 말로 하고 싶으면 — 어제 단톡방 대화가 그대로 카드가 됩니다.</p>
         <dl class="howto">
           <dt>1</dt><dd>카톡 대화방 → 메뉴(≡) → <b>대화 내용 내보내기</b> → 텍스트만</dd>
           <dt>2</dt><dd>나온 <b>.txt</b>를 고르거나 내용을 붙여넣기</dd>
@@ -44,6 +45,7 @@
         <textarea id="paste" placeholder="또는 여기에 대화 내용을 붙여넣으세요"></textarea>
         <button class="btn wide" id="go-parse" disabled>읽어들이기</button>
         <p class="small" id="import-err" role="status"></p>
+        <button class="btn ghost wide" id="go-sample">먼저 샘플로 구경하기</button>
       </div>
 
       <div class="note"><b>대화는 이 기기 안에서 읽습니다.</b> 파일은 어디에도 업로드되지 않습니다. 그날 연습할 문장과 앞뒤 맥락만 번역을 위해 전송됩니다.</div>
@@ -73,6 +75,21 @@
       </div>
       <button class="btn wide" id="go-days">날짜별로 나누기</button>
       <p class="small" id="build-note"></p>
+    </div>
+  </section>
+
+  <!-- ══════ JOB DECKS ══════ -->
+  <section class="screen" id="s-jobs">
+    <div class="topbar">
+      <button class="iconbtn" id="back-jobs" aria-label="뒤로">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <h2>어떤 일 하세요?</h2>
+    </div>
+    <div class="stack" style="gap:16px; min-height:0">
+      <p class="small">직무별로 자주 쓰는 표현을 모아뒀습니다. 골라서 바로 시작하세요 — 카톡 안 넣어도 됩니다.</p>
+      <div class="days" id="job-list"></div>
+      <div class="note">이 표현들은 누군가의 실제 대화가 아니라 <b>직무별로 새로 쓴 문장</b>입니다. 남의 단톡방 내용은 들어가지 않습니다.</div>
     </div>
   </section>
 
@@ -139,7 +156,8 @@
       <p class="small" id="done-sub"></p>
       <div class="stack" style="width:100%;max-width:310px">
         <button class="btn wide hide" id="next-day">다음 날짜 이어서 하기</button>
-        <button class="btn ghost wide" id="pick-day">날짜 고르기</button>
+        <button class="btn ghost wide" id="more-jobs">다른 직무 표현 보기</button>
+        <button class="btn ghost wide" id="pick-day">내 덱 목록</button>
         <button class="btn ghost wide" id="restart">다른 대화 넣기</button>
       </div>
     </div>
