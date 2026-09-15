@@ -1,0 +1,17 @@
+{
+  "name": "말한 대로 영어",
+  "short_name": "말한대로",
+  "description": "카톡 대화를 날짜별로 나눠 하루치씩, 내가 실제로 쓴 문장으로 영어 말하기를 연습합니다.",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef1f5",
+  "theme_color": "#2952e3",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

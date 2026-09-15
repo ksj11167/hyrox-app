@@ -180,10 +180,14 @@ export function buildCandidates(parsed, me, opts = {}) {
     const text = m.text.trim();
     if (text.length < minChars) return;
 
+    // Context never crosses a date boundary: the last thing said on Friday is
+    // not context for the first thing said on Sunday, and feeding it to the
+    // translator (or showing it on the card) is actively misleading.
     const context = [];
     for (let j = Math.max(0, idx - contextTurns); j < idx; j++) {
       const c = parsed.messages[j];
       if (c.media) continue;
+      if (c.date !== m.date) continue;
       context.push({ speaker: c.speaker, text: c.text.trim(), mine: c.speaker === me });
     }
 

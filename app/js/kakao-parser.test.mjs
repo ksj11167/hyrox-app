@@ -144,6 +144,28 @@ test('candidates: nothing is dropped for being short or repetitive', () => {
   assert.ok(c.some((x) => x.ko === '넵'), 'short utterance was filtered — deck must stay uncurated');
 });
 
+test('candidates: context never crosses a date boundary', () => {
+  const c = buildCandidates(parseKakaoExport(ANDROID), '김세진');
+  const firstOfDay2 = c.find((x) => x.date === '2024년 3월 12일');
+  assert.ok(firstOfDay2, 'expected a card on the second day');
+  for (const ctx of firstOfDay2.context) {
+    assert.ok(
+      !/고생|주말/.test(ctx.text),
+      'context leaked from the previous day: ' + ctx.text,
+    );
+  }
+  const sameDayOnly = buildCandidates(
+    parseKakaoExport(
+      '--------------- 2024년 3월 11일 월요일 ---------------\n' +
+      '[박팀장] [오후 11:58] 내일 봐요\n' +
+      '--------------- 2024년 3월 12일 화요일 ---------------\n' +
+      '[김세진] [오전 9:01] 안녕하세요\n',
+    ),
+    '김세진',
+  );
+  assert.equal(sameDayOnly[0].context.length, 0, 'yesterday must not be context for today');
+});
+
 test('days: one deck per calendar day, newest first', () => {
   const days = groupByDay(buildCandidates(parseKakaoExport(ANDROID), '김세진'));
   assert.equal(days.length, 2);
