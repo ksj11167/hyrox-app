@@ -59,7 +59,8 @@ Cloudflare 자체는 이 규모에서 **무료**입니다. 나가는 돈은 Anth
    «Account ID»가 있습니다. 복사
 3. **API 토큰**: 오른쪽 위 프로필 → **My Profile → API Tokens → Create Token**
    → «Edit Cloudflare Workers» 템플릿 선택 → 만들고 복사
-4. **저장 공간 만들기**: **Workers & Pages → KV → Create a namespace**,
+4. **저장 공간 만들기**: 왼쪽 메뉴 **Storage & databases → KV → Create a namespace**
+   («Workers & Pages» 안이 아니라 **한 칸 아래 별도 메뉴**입니다).
    이름은 `QUOTA`. 만들어지면 옆에 뜨는 **ID**를 복사
 
 > KV는 «누가 오늘 몇 번 썼는지»만 세는 작은 저장소입니다. 대화는 여기 저장되지
