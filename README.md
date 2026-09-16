@@ -55,6 +55,7 @@
 
 ```
 app/                        배포 대상 (빌드 불필요, 정적 파일)
+  privacy.html              개인정보 처리방침 (스토어 필수)
   index.html                화면 구조
   styles.css                토큰 · 스와이프 덱 · 라이트/다크
   manifest.webmanifest      설치형 PWA
@@ -66,11 +67,15 @@ app/                        배포 대상 (빌드 불필요, 정적 파일)
     srs.js                  FSRS 래퍼
     translate.js            번역 제공자 (Claude 아티팩트 | 본인 API 키)
     platform.js             네이티브/웹 한 겹 (공유시트 · 음성 인식)
-    job-decks.js            직무별 기본 표현집 (앱에 내장, 백엔드 없음)
+    job-decks.js            직무별 표현집 — v1 범위 밖, 마일스톤 대기 (D20)
   vendor/ts-fsrs.mjs
 android/  ios/              Capacitor 네이티브 셸 (cap sync가 app/을 복사)
 capacitor.config.json
+server/                     번역 프록시 (Cloudflare Worker) — 유일한 백엔드
+test/e2e.test.mjs           브라우저로 전 흐름 훑기
 tools/make-artifact.mjs     app/index.html → Claude 아티팩트용 파일
+tools/screenshots.mjs       실제 앱에서 스토어 스크린샷 뽑기
+store/                      스토어 등재 문구와 스크린샷
 docs/prd.md                 v1 범위 · 타겟 · 성공 지표 · 비범위
 docs/decisions.md           확정된 결정 · 가정 · 인터뷰 기록
 ```
@@ -78,9 +83,13 @@ docs/decisions.md           확정된 결정 · 가정 · 인터뷰 기록
 ## 테스트
 
 ```bash
-npm test                               # 파서 23개
-node app/js/job-decks.test.mjs         # 덱 데이터 9개 (아직 npm test에 안 붙음)
+npm test          # 파서 26 · 덱 데이터 9 · 번역 프록시 12
+npm run test:e2e  # 실제 브라우저로 전 흐름 18단계
+npm run test:all  # 전부
 ```
+
+e2e는 밀폐돼 있다 — 외부 요청을 전부 가로채므로 폰트 CDN이 느리다고 실패하지
+않는다. 샘플 대화로 돌아서 API 키도 네트워크도 필요 없다.
 
 파서는 앱의 심장이고 카톡 포맷은 안정적인 계약이 아니다(Android 대괄호 형식과 iOS
 날짜-쉼표 형식이 다르고, 여러 줄 메시지·미디어 자리표시자·시스템 공지가 섞인다).
