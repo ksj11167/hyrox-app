@@ -3,7 +3,7 @@ name: Deploy app to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['app/**', '.github/workflows/pages.yml']
+    paths: ['app/**', 'site/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -35,8 +35,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+
+      # app/ is what Capacitor wraps into the APK, so nothing that only belongs
+      # on the web may live there — the landing page and its screenshots were
+      # 71% of the bundle and unreachable from inside the app. They live in
+      # site/ and are merged in here, where both are served from one root so
+      # the relative links between them still resolve.
+      - name: Compose the published site
+        run: |
+          mkdir -p _site
+          cp -r app/. _site/
+          cp -r site/. _site/
+          find _site -maxdepth 2 -type d -o -type f -name '*.html' | sort
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: app
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

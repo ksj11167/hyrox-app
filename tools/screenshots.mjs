@@ -12,7 +12,7 @@
  */
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir, copyFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -96,3 +96,13 @@ for (const size of SIZES) {
 await browser.close();
 server.close();
 console.log(`\nwrote ${SIZES.length * 6} screenshots to ${OUT}`);
+
+/* The landing page shows the same shots. Refreshing them here rather than by
+   hand is the whole reason they cannot drift from the app. */
+if (!process.argv[2]) {
+  const SITE = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'site', 'shots');
+  await mkdir(SITE, { recursive: true });
+  const used = ['1-home', '3-days', '4-transcript', '5-card', '6-answer'];
+  for (const n of used) await copyFile(join(OUT, `ios-6.7-${n}.png`), join(SITE, `${n}.png`));
+  console.log(`refreshed ${used.length} shots in site/shots for the landing page`);
+}
