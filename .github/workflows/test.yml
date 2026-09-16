@@ -28,3 +28,6 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      # The seam between the app and the proxy — the path every ordinary user
+      # takes, and the one neither side's own tests covered.
+      - run: npm run test:proxy

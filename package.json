@@ -7,11 +7,12 @@
   "scripts": {
     "test": "node app/js/kakao-parser.test.mjs && node app/js/job-decks.test.mjs && node server/worker.test.mjs",
     "test:e2e": "node test/e2e.test.mjs",
-    "test:all": "npm test && npm run test:e2e",
+    "test:all": "npm test && npm run test:e2e && npm run test:proxy",
     "artifact": "node tools/make-artifact.mjs",
     "sync": "cap sync",
     "android": "cap run android",
-    "ios": "cap run ios"
+    "ios": "cap run ios",
+    "test:proxy": "node test/proxy-integration.test.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
