@@ -38,6 +38,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: real-talk-english-debug-apk
+          name: k-office-english-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
