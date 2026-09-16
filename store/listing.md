@@ -6,7 +6,7 @@
 
 ---
 
-## 먼저 정해야 하는 것
+## 먼저 정해야 하는 것 — 세 개 다 끝남
 
 ### 1. 앱 ID — 확정됨
 
@@ -17,11 +17,12 @@
 
 `ksj11167@gmail.com` (2026-09-16 결정). `app/privacy.html`에 들어가 있다.
 
-### 3. 처리방침이 올라갈 공개 주소 — 레포 공개 + Pages로 해결 (D22)
+### 3. 처리방침 공개 주소 — 확정됨
 
-스토어는 누구나 열 수 있는 URL을 요구한다. 레포가 비공개라 GitHub Pages가
-막혀 있으므로, 정적 호스팅(Netlify·Vercel·Cloudflare Pages)에 올린 뒤 그
-주소의 `/privacy.html`을 적으면 된다.
+**https://ksj11167.github.io/k-office-english/privacy.html**
+
+레포를 공개로 돌리고 Pages를 켜서 해결됐다 (D22). 스토어 제출란에 이 주소를 그대로
+넣으면 된다.
 
 ---
 
