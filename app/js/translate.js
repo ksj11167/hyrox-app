@@ -3,6 +3,9 @@
  *
  * Two providers, picked automatically:
  *
+ *   proxy   — a PROXY_URL is configured, so the server holds the key and the
+ *             user supplies nothing. This is the path an ordinary user takes;
+ *             the other two exist so the app also works without a server.
  *   claude  — the page is a published Claude artifact, so `claude.use("sample")`
  *             asks the viewer's own Claude. No key, no setup.
  *   apikey  — the page is self-hosted (GitHub Pages, a static host), so the user
@@ -17,6 +20,10 @@
 
 const KEY_STORE = 'rte.apikey';
 const MODEL_STORE = 'rte.model';
+
+/* Set at deploy time. Empty means this build has no server of its own and falls
+   back to the artifact capability or the user's own key. */
+export const PROXY_URL = '';
 
 export const MODELS = [
   { id: 'claude-opus-5', label: 'Opus 5 · 가장 정확' },
@@ -37,8 +44,11 @@ export async function detect() {
 }
 
 export function provider() {
-  if (sampleFn) return 'claude';
+  // A user's own key wins over the shared proxy: they are paying for it, they
+  // get no daily limit, and it is the only way to choose a model.
   if (getKey()) return 'apikey';
+  if (sampleFn) return 'claude';
+  if (PROXY_URL) return 'proxy';
   return 'none';
 }
 
@@ -74,8 +84,9 @@ export const setModel = (v) => {
 export async function translateDay(slice, roomType) {
   const prompt = buildPrompt(slice, roomType);
   const p = provider();
-  if (p === 'claude') return viaSample(prompt);
   if (p === 'apikey') return viaApi(prompt);
+  if (p === 'claude') return viaSample(prompt);
+  if (p === 'proxy') return viaProxy(prompt);
   throw { code: 'no_provider', message: 'No translation provider configured' };
 }
 
@@ -102,6 +113,23 @@ function buildPrompt(slice, roomType) {
     '오직 JSON 배열만 출력한다. ref가 아닌 줄과 개수가 같아야 한다:\n' +
     '[{"id":"m3","en":"Can you get that done by today?","situation":"마감 확인"}]\n\n' +
     JSON.stringify(items, null, 1);
+}
+
+/** The shared server holds the key; this end sends only the prompt. */
+async function viaProxy(prompt) {
+  let res;
+  try {
+    res = await fetch(PROXY_URL.replace(/\/$/, '') + '/translate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+  } catch {
+    throw { code: 'upstream_error', message: 'network' };
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw { code: data.error || 'upstream_error', message: `HTTP ${res.status}` };
+  return parseRows(String(data.text || ''));
 }
 
 async function viaSample(prompt) {
@@ -167,6 +195,8 @@ function parseRows(text) {
 export function messageFor(code) {
   switch (code) {
     case 'no_provider': return 'API 키를 넣거나, Claude 아티팩트로 열어야 번역할 수 있습니다.';
+    case 'daily_limit': return '오늘 무료 번역 횟수를 다 썼습니다. 내일 다시 되고, 설정에 본인 API 키를 넣으면 제한이 없습니다.';
+    case 'origin_not_allowed': return '이 주소에서는 번역 서버를 쓸 수 없습니다.';
     case 'not_granted': return 'API 키가 거부됐습니다. 설정에서 다시 확인해 주세요.';
     case 'rate_limited': return '요청이 한도를 넘었습니다. 잠시 뒤 다시 시도해 주세요.';
     case 'session_expired': return 'claude.ai에 다시 로그인한 뒤 시도해 주세요.';

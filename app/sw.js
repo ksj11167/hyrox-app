@@ -21,6 +21,7 @@ const VERSION = 'koe-v2';
 const SHELL = [
   './',
   './index.html',
+  './privacy.html',
   './styles.css',
   './manifest.webmanifest',
   './js/main.js',

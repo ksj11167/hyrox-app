@@ -297,17 +297,25 @@ function renderTranscript() {
   $('tx-title').textContent = day.date;
   $('tx-sub').textContent = state.roomTitle ? `${state.roomTitle} · ${day.messages.length}줄` : `${day.messages.length}줄`;
 
-  // Always offered, not just on the first day: which name is mine is the one
-  // thing the app cannot work out for itself, and getting it wrong is easy.
+  // Which name is mine is the one thing the app cannot work out for itself, so
+  // it asks — but only until it has an answer. After that the question collapses
+  // to a line, because the screen belongs to the conversation, not to the form.
   const people = speakersIn(day.messages);
-  $('tx-pick').innerHTML = `
-    <h2>어느 쪽이 나인가요?</h2>
-    <p class="small">고른 사람의 말이 카드가 됩니다. 나머지는 맥락으로 쓰여요.</p>
-    <div class="pickers">${people.map((s) => `
-      <label class="picker">
-        <input type="radio" name="me" value="${esc(s.name)}" ${s.name === state.me ? 'checked' : ''}>
-        <span class="nm">${esc(s.name)}</span><span class="ct">${s.count}줄</span>
-      </label>`).join('')}</div>`;
+  const picked = state.me && people.some((p) => p.name === state.me);
+  $('tx-pick').classList.toggle('slim', !!picked);
+  $('tx-pick').innerHTML = picked
+    ? `<div class="whoami"><span>나는 <b>${esc(state.me)}</b></span>
+         <button class="linkbtn" id="tx-change">바꾸기</button></div>`
+    : `<h2>어느 쪽이 나인가요?</h2>
+       <p class="small">고른 사람의 말이 카드가 됩니다. 나머지는 맥락으로 쓰여요.</p>
+       <div class="pickers">${people.map((s) => `
+         <label class="picker">
+           <input type="radio" name="me" value="${esc(s.name)}">
+           <span class="nm">${esc(s.name)}</span><span class="ct">${s.count}줄</span>
+         </label>`).join('')}</div>`;
+
+  const change = $('tx-change');
+  if (change) change.addEventListener('click', () => { state.me = null; save(); renderTranscript(); });
   for (const r of $('tx-pick').querySelectorAll('input')) {
     r.addEventListener('change', () => { state.me = r.value; save(); renderTranscript(); });
   }
