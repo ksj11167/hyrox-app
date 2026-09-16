@@ -1,5 +1,5 @@
 /**
- * Turning my Korean messages into English, wherever the app happens to run.
+ * Turning a day of Korean conversation into English, wherever the app runs.
  *
  * Two providers, picked automatically:
  *
@@ -56,39 +56,51 @@ export const setModel = (v) => {
 };
 
 /**
- * Translate one batch of utterances.
- * @param {{id: string, ko: string, context: {speaker: string, text: string, mine: boolean}[]}[]} chunk
+ * Translate one slice of a day's conversation.
+ *
+ * Every line is translated, not only mine (D18). That is what produces an
+ * English conversation with my turn in it, which is both what a card's context
+ * shows and the only material a roleplay could later run on.
+ *
+ * `ref` lines are read but not translated: when a day is too long for one call,
+ * each slice after the first carries the tail of the one before it so the model
+ * is never dropped into the middle of a conversation with no idea what "그거"
+ * refers to.
+ *
+ * @param {{id: string, speaker: string, ko: string, ref?: boolean}[]} slice
  * @param {'business'|'casual'} roomType
  * @returns {Promise<{id: string, en: string, situation: string}[]>}
  */
-export async function translate(chunk, roomType) {
-  const prompt = buildPrompt(chunk, roomType);
+export async function translateDay(slice, roomType) {
+  const prompt = buildPrompt(slice, roomType);
   const p = provider();
   if (p === 'claude') return viaSample(prompt);
   if (p === 'apikey') return viaApi(prompt);
   throw { code: 'no_provider', message: 'No translation provider configured' };
 }
 
-function buildPrompt(chunk, roomType) {
-  const items = chunk.map((c) => ({
-    id: c.id,
-    context: (c.context || []).map((x) => `${x.mine ? '나' : x.speaker}: ${x.text}`),
-    target: c.ko,
-  }));
+function buildPrompt(slice, roomType) {
+  const items = slice.map((m) => {
+    const row = { id: m.id, speaker: m.speaker, ko: m.ko };
+    if (m.ref) row.ref = true;
+    return row;
+  });
   const register = roomType === 'business'
     ? '직장 동료·상사와 쓰는 정중하지만 딱딱하지 않은 영어'
     : '친구끼리 쓰는 편안한 구어체 영어';
 
-  return '한국어 메신저 대화에서 뽑은 내 발화를 영어로 옮긴다.\n\n' +
+  return '한국어 메신저 대화를 영어로 옮긴다. 대화 전체가 영어로 읽혀야 한다.\n\n' +
     '규칙:\n' +
-    '- context는 참고만 한다. 번역 대상은 target 한 줄뿐이다.\n' +
+    '- ref가 없는 줄은 **전부** 번역한다. 한 줄도 건너뛰지 마라.\n' +
+    '- ref: true인 줄은 앞선 맥락이다. 읽기만 하고 결과에 넣지 마라.\n' +
     `- 말투: ${register}. 교과서 문장이 아니라 실제로 입에서 나오는 말로.\n` +
-    '- "그거", "이거" 같은 지시어는 영어에서도 that, this로 유지한다. 뭘 가리키는지 억지로 밝히지 마라.\n' +
+    '- 대화 전체를 읽고 옮긴다. "그거", "이거"는 영어에서도 that, this로 유지한다.\n' +
+    '  뭘 가리키는지 억지로 밝히지 마라.\n' +
     '- "넵", "ㅇㅇ" 같은 짧은 반응도 영어에서 실제로 쓰는 대응 표현을 준다.\n' +
-    '- 한 발화당 영어 문장 하나. 후보를 나열하지 마라.\n' +
-    '- situation: 그 발화의 기능을 한국어 2~6자로. 예) 마감 확인, 사과, 약속 잡기\n\n' +
-    '오직 JSON 배열만 출력한다:\n' +
-    '[{"id":"c3","en":"Can you get that done by today?","situation":"마감 확인"}]\n\n' +
+    '- 한 줄당 영어 한 문장. 후보를 나열하지 마라.\n' +
+    '- situation: 그 줄의 기능을 한국어 2~6자로. 예) 마감 확인, 사과, 약속 잡기\n\n' +
+    '오직 JSON 배열만 출력한다. ref가 아닌 줄과 개수가 같아야 한다:\n' +
+    '[{"id":"m3","en":"Can you get that done by today?","situation":"마감 확인"}]\n\n' +
     JSON.stringify(items, null, 1);
 }
 
@@ -110,7 +122,7 @@ async function viaApi(prompt) {
       },
       body: JSON.stringify({
         model: getModel(),
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{ role: 'user', content: prompt }],
       }),
     });

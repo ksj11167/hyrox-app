@@ -1,15 +1,23 @@
 /**
  * Offline shell.
  *
- * Reviewing already-built cards needs no network at all — the deck and its
- * schedule live in localStorage — so the app should open on a train. Only
- * building new cards needs to reach a translation provider.
+ * Reviewing already-built cards needs no network at all — the conversation and
+ * its schedule live in localStorage — so the app should open on a train. Only
+ * translating a new day needs to reach a provider.
  *
  * Strategy: precache the shell on install, then serve the app's own files
- * cache-first and fall back to the network. API and font requests are left
- * alone; fonts are cached opportunistically as they are fetched.
+ * stale-while-revalidate — the cached copy answers immediately and a fresh copy
+ * is fetched in the background for next time.
+ *
+ * That last part is not a detail. A plain cache-first worker with a fixed cache
+ * name pins every visitor to whatever version they happened to load first: ship
+ * a fix and the people who already opened the app never see it. Revalidating
+ * means a release reaches them on their second load, and it also means a file
+ * missing from SHELL heals itself instead of staying broken offline forever.
+ *
+ * Google Fonts files are content-addressed, so those stay cache-first.
  */
-const VERSION = 'rte-v1';
+const VERSION = 'koe-v2';
 const SHELL = [
   './',
   './index.html',
@@ -20,13 +28,19 @@ const SHELL = [
   './js/srs.js',
   './js/swipe.js',
   './js/translate.js',
+  './js/platform.js',
   './vendor/ts-fsrs.mjs',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // One bad URL must not fail the whole install, or the app has no shell at all.
+  e.waitUntil(
+    caches.open(VERSION)
+      .then((c) => Promise.all(SHELL.map((u) => c.add(u).catch(() => null))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -40,16 +54,34 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const { request } = e;
   if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
-  if (url.hostname === 'api.anthropic.com') return;        // never cache model calls
+  if (url.hostname === 'api.anthropic.com') return;          // never cache model calls
+
+  const sameOrigin = url.origin === location.origin;
+  const font = url.hostname.endsWith('gstatic.com') || url.hostname.endsWith('googleapis.com');
+  if (!sameOrigin && !font) return;
+
+  if (font) {
+    e.respondWith(
+      caches.match(request).then((hit) => hit || fetch(request).then((res) => {
+        if (res.ok) caches.open(VERSION).then((c) => c.put(request, res.clone()));
+        return res;
+      })),
+    );
+    return;
+  }
 
   e.respondWith(
-    caches.match(request).then((hit) => hit || fetch(request).then((res) => {
-      if (res.ok && (url.origin === location.origin || url.hostname.endsWith('gstatic.com'))) {
-        const copy = res.clone();
-        caches.open(VERSION).then((c) => c.put(request, copy));
-      }
-      return res;
-    }).catch(() => caches.match('./index.html'))),
+    caches.match(request).then((hit) => {
+      const fresh = fetch(request)
+        .then((res) => {
+          if (res.ok) caches.open(VERSION).then((c) => c.put(request, res.clone()));
+          return res;
+        })
+        .catch(() => hit || caches.match('./index.html'));
+      // Cached copy now, fresh copy for next time. With nothing cached, wait.
+      return hit || fresh;
+    }),
   );
 });
