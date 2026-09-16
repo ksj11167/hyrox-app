@@ -17,7 +17,8 @@
  *
  * Google Fonts files are content-addressed, so those stay cache-first.
  */
-const VERSION = 'koe-v2';
+const VERSION = 'koe-v3';
+const SHARE_KEY = './__shared-export';
 const SHELL = [
   './',
   './index.html',
@@ -52,8 +53,32 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+/* An installed PWA on Android can be a share target, which is the half of
+   "stop exporting by hand every time" that the web can solve. The share arrives
+   here as a POST, not as a navigation, so the worker has to catch it, stash the
+   text, and send the browser to the app — which then picks it up. */
 self.addEventListener('fetch', (e) => {
   const { request } = e;
+
+  if (request.method === 'POST' && new URL(request.url).pathname.endsWith('/')) {
+    e.respondWith((async () => {
+      let text = '';
+      try {
+        const form = await request.formData();
+        const file = form.get('file');
+        if (file && typeof file.text === 'function') text = await file.text();
+        if (!text) text = String(form.get('text') || '');
+      } catch { /* a share we cannot read is not worth a crash */ }
+
+      if (text.trim()) {
+        const c = await caches.open(VERSION);
+        await c.put(SHARE_KEY, new Response(text, { headers: { 'content-type': 'text/plain' } }));
+      }
+      return Response.redirect('./?shared=1', 303);
+    })());
+    return;
+  }
+
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);

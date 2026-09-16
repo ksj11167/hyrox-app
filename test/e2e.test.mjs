@@ -55,6 +55,11 @@ async function step(name, fn) {
 
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
+const SHARED_TXT = `대화방 님과 카카오톡 대화
+--------------- 2026년 9월 15일 월요일 ---------------
+[김세진] [오전 9:01] 공유로 들어온 말입니다
+[박팀장] [오전 9:02] 네 확인했어요`;
+
 const server = await serve();
 const base = `http://127.0.0.1:${server.address().port}/`;
 const browser = await chromium.launch();
@@ -205,6 +210,42 @@ try {
     await page.click('#wipe');
     await page.waitForSelector('#s-home.on');
     assert(!(await page.locator('#go-resume').isVisible()), 'resume survived the wipe');
+  });
+
+  await step('the English answer can be heard, and the button says so', async () => {
+    await page.goto(base);
+    await page.waitForSelector('#s-home.on');
+    await page.click('#home-sample');
+    await page.waitForSelector('#s-preview.on');
+    await page.click('#go-days');
+    await page.click('#day-list .day >> nth=1');
+    await page.waitForSelector('#s-transcript.on', { timeout: 10000 });
+    // The transcript is where these sentences are first met, so it speaks too.
+    assert(await page.locator('#tx-body').evaluate((el) => el.classList.contains('speakable')),
+      'transcript lines are not speakable');
+    await page.click('#tx-pick input[value="김세진"]');
+    await page.waitForFunction(() => !document.getElementById('go-practice').disabled);
+    await page.click('#go-practice');
+    await page.waitForSelector('#s-practice.on');
+    await page.click('.swipe-card.front .flip');
+    assert(await page.locator('.swipe-card.front .say').count() === 1,
+      'no way to hear the answer after flipping');
+  });
+
+  await step('a shared export is picked up without touching the file input', async () => {
+    // Stand in for the service worker's stash: the round trip it completes is
+    // POST → cache → ?shared=1 → the app reads it. This checks the second half,
+    // which is the part the app owns.
+    await page.goto(base);
+    await page.evaluate(async (txt) => {
+      const c = await caches.open('koe-v3');
+      await c.put('./__shared-export', new Response(txt, { headers: { 'content-type': 'text/plain' } }));
+    }, SHARED_TXT);
+    await page.goto(base + '?shared=1');
+    await page.waitForSelector('#s-preview.on', { timeout: 8000 });
+    const text = await page.locator('#preview-tx').innerText();
+    assert(text.includes('공유로 들어온 말'), 'the shared conversation did not reach the preview');
+    assert(!page.url().includes('shared=1'), 'the query string survived, so a reload would re-import');
   });
 
   await step('no script errors anywhere in the walk', async () => {

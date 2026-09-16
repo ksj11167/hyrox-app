@@ -302,7 +302,28 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; 
   margin-top: auto; border-top: 2px dashed var(--line); padding-top: 13px;
   display: flex; flex-direction: column; gap: 8px;
 }
+.en-row { display: flex; align-items: flex-start; gap: 10px; }
+.en-row .en { flex: 1; min-width: 0; }
 .en { font-family: var(--serif); font-size: 24px; line-height: 1.3; color: var(--ink); text-wrap: balance; }
+
+/* Hear it, then say it. Sized as a real touch target, not a glyph. */
+.say {
+  flex: none; width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center; margin-top: -2px;
+  color: var(--accent); background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  transition: transform .08s ease;
+}
+.say svg { width: 20px; height: 20px; }
+.say:active { transform: scale(.9); }
+.say.playing { background: var(--accent); color: var(--accent-ink); }
+
+/* In the transcript a whole bubble is the target — the sentences are short and
+   a per-line button would crowd every one of them. */
+.transcript.speakable .bub[data-en]:not([data-en=""]) { cursor: pointer; }
+.bub.playing { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) { .say:active { transform: none; } }
 .heard { font-size: 13px; color: var(--muted); font-style: italic; }
 .heard b { font-style: normal; color: var(--ink-2); font-weight: 500; }
 .score {

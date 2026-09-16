@@ -2,7 +2,7 @@ import { parseKakaoExport, groupByDay, cardsForSpeaker, speakersIn, guessRoomTyp
 import { newCardState, review, isDue, isLearned, dueLabel } from './srs.js';
 import { createSwipeDeck } from './swipe.js';
 import * as T from './translate.js';
-import { isNative, platform, onSharedChatExport, createRecogniser } from './platform.js';
+import { isNative, platform, onSharedChatExport, createRecogniser, createSpeaker } from './platform.js';
 
 /* The sample ships with English written in, so the whole loop — the transcript,
    the swipe and the scheduler — works before any provider is configured. It is
@@ -65,6 +65,7 @@ let sessionTotal = 0;
 let heardText = '';
 let recog = null;
 let listening = false;
+const speaker = createSpeaker();
 
 function show(name) {
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('on', el.id === 's-' + name);
@@ -339,11 +340,25 @@ function renderTranscript() {
     if (m.media) {
       return `<div class="bub media"><span class="who">${esc(m.speaker)}</span>(${esc(m.ko)})</div>`;
     }
-    return `<div class="bub ${mine ? 'mine' : ''}">` +
+    return `<div class="bub ${mine ? 'mine' : ''}" data-en="${esc(m.en || '')}">` +
       `<span class="who">${esc(m.speaker)}</span>` +
       `<span class="en-line">${esc(m.en || '—')}</span>` +
       `<span class="ko-line">${esc(m.ko)}</span></div>`;
   }).join('');
+
+  // Tapping a line reads it. The transcript is the first place someone meets
+  // these sentences, so it is the first place they should be able to hear them.
+  if (speaker.available()) {
+    $('tx-body').classList.add('speakable');
+    for (const el of $('tx-body').querySelectorAll('.bub[data-en]')) {
+      if (!el.dataset.en) continue;
+      el.addEventListener('click', () => {
+        for (const b of $('tx-body').querySelectorAll('.bub.playing')) b.classList.remove('playing');
+        el.classList.add('playing');
+        speaker.speak(el.dataset.en).then(() => el.classList.remove('playing'));
+      });
+    }
+  }
 
   const n = state.me ? cardsForSpeaker(day.messages, state.me).length : 0;
   $('go-practice').disabled = n === 0;
@@ -403,12 +418,22 @@ function renderCard(body, ref) {
     `<div class="ctx">${ctx}</div>` +
     `<div class="target">${esc(c.ko)}</div>` +
     '<div class="answer hide">' +
-      `<div class="en">${esc(c.en || '—')}</div>` +
+      '<div class="en-row">' +
+        `<div class="en">${esc(c.en || '—')}</div>` +
+        (speaker.available()
+          ? '<button class="say" data-no-drag aria-label="영어 문장 듣기">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>' +
+            '</svg></button>'
+          : '') +
+      '</div>' +
       '<div class="heard hide"></div><div class="score hide"></div><div class="miss-words hide"></div>' +
     '</div>' +
     '<button class="flip" data-no-drag>정답 보기</button>';
 
   body.querySelector('.flip').addEventListener('click', () => revealIn(body));
+  const say = body.querySelector('.say');
+  if (say) say.addEventListener('click', () => speak(say, c.en));
 }
 
 function revealIn(body) {
@@ -416,6 +441,19 @@ function revealIn(body) {
   const flip = body.querySelector('.flip');
   if (flip) flip.remove();
   $('pr-hint').textContent = '말할 수 있었으면 오른쪽, 아니면 왼쪽으로';
+  // Hearing it is most of the point of revealing it, so it plays without asking.
+  // The button is still there to hear it again.
+  const say = body.querySelector('.say');
+  const ref = deck.current();
+  if (say && ref) speak(say, cardAt(ref).en);
+}
+
+/** Speak a line and show it playing. One utterance at a time. */
+function speak(btn, text) {
+  if (!speaker.available() || !text) return;
+  for (const b of document.querySelectorAll('.say.playing')) b.classList.remove('playing');
+  btn.classList.add('playing');
+  speaker.speak(text).then(() => btn.classList.remove('playing'));
 }
 
 const frontBody = () => $('deck').querySelector('.swipe-card.front .swipe-body');
@@ -447,6 +485,7 @@ $('quit').addEventListener('click', finish);
 
 function finish() {
   stopListening();
+  speaker.stop();
   save();
   const day = state.days[activeDay];
   const left = state.days.findIndex((d, i) => i !== activeDay && dayStatus(d) !== 'done');
