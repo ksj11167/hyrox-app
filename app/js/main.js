@@ -85,10 +85,24 @@ $('go-import').addEventListener('click', () => show('import'));
 $('go-resume').addEventListener('click', () => { renderDays(); show('days'); });
 $('home-sample').addEventListener('click', () => ingest(SAMPLE_TXT, true));
 
+/* The home screen has to tell the truth about what this copy of the app can
+   do. On a build with no translation provider — the public link, before the
+   proxy exists — importing your own chat runs into a wall three screens later.
+   So when there is no provider, the sample leads and the import says why. */
 function refreshHome() {
   const has = state.days.length > 0;
+  const canTranslate = T.provider() !== 'none';
+
   $('go-resume').classList.toggle('hide', !has);
   $('home-sample').classList.toggle('hide', has);
+  $('home-note').classList.toggle('hide', canTranslate);
+
+  $('go-import').classList.toggle('ghost', !canTranslate && !has);
+  $('home-sample').classList.toggle('ghost', !canTranslate);
+  $('go-import').textContent = canTranslate
+    ? '내 카톡 대화 가져오기'
+    : '내 카톡 대화 가져오기 (API 키 필요)';
+
   if (!has) return;
   const remaining = state.days.filter((d) => dayStatus(d) !== 'done').length;
   $('go-resume').textContent = remaining ? `이어서 하기 · ${remaining}일 남음` : `복습하기 · ${state.days.length}일치`;
@@ -573,7 +587,7 @@ if (saved) state = { ...state, ...saved };
 refreshHome();
 show('home');
 
-T.detect();
+T.detect().then(refreshHome);
 
 // On the native shell KakaoTalk can share an export straight into the app,
 // which skips the file picker the web has to fall back to.
